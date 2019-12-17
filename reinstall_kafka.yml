@@ -1,0 +1,33 @@
+- name: Reinstall Kafka
+  hosts: kafka_broker
+  vars_prompt:
+    - name: reinstall_kafka
+      prompt: "Reinstall Kafka? [yes(default)/no]"
+      private: no
+      default: true
+  tasks:
+    - block:
+        - import_role:
+            name: confluent.variables_handlers
+        - import_role:
+            name: confluent.common
+        - name: Stop Kafka
+          systemd:
+            name: "{{ kafka_broker_service_name }}"
+            state: stopped
+        - name: Reinstall Kafka
+          include_tasks: tasks/reinstall_components.yml
+          vars:
+            tmp_name: "kafka"
+            packages: "{{ kafka_broker_packages }}"
+            backup_files:
+              - "{{ kafka_broker.config_file }}"
+              - "{{ kafka_broker.systemd_override }}"
+            restore_files:
+              - "{{ kafka_broker.config_file }}"
+        - name: Restart Kafka Brokers
+          import_tasks: tasks/restart_kafka.yml
+      when: reinstall_kafka|bool
+    - debug:
+        msg: "Skip reinstalling Kafka"
+      when: not reinstall_kafka|bool
