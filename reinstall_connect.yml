@@ -1,0 +1,30 @@
+- name: Reinstall Connect
+  hosts: kafka_connect
+  vars_prompt:
+    - name: reinstall_connect
+      prompt: "Reinstall Connect? [yes(default)/no]"
+      private: no
+      default: true
+  tasks:
+    - block:
+        - import_role:
+            name: confluent.variables_handlers
+        - import_role:
+            name: confluent.common
+        - name: Reinstall Connect
+          include_tasks: tasks/reinstall_and_restart_components.yml
+          vars:
+            tmp_name: "connect"
+            services:
+              - "{{ kafka_connect_service_name }}"
+            # control center for monitoring; schema registry for AVRO stuff
+            packages: "{{ (kafka_connect_packages + ksql_packages + schema_registry_packages + control_center_packages) | unique}}"
+            backup_files:
+              - "{{ kafka_connect.config_file }}"
+              - "{{ kafka_connect.systemd_override }}"
+            restore_files:
+              - "{{ kafka_connect.config_file }}"
+      when: reinstall_connect|bool
+    - debug:
+        msg: "Skip reinstalling Connect"
+      when: not reinstall_connect|bool

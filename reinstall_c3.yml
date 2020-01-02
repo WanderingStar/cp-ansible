@@ -1,0 +1,30 @@
+- name: Reinstall C3
+  hosts: control_center
+  vars_prompt:
+    - name: reinstall_c3
+      prompt: "Reinstall C3? [yes(default)/no]"
+      private: no
+      default: true
+  tasks:
+    - block:
+        - import_role:
+            name: confluent.variables_handlers
+        - import_role:
+            name: confluent.common
+        - name: Reinstall C3
+          include_tasks: tasks/reinstall_and_restart_components.yml
+          vars:
+            tmp_name: "c3"
+            services:
+              - "{{ control_center_service_name }}"
+            # schema registry packages might be needed by rest proxy for AVRO stuff. Not sure about control center, might also need it.
+            packages: "{{ (kafka_rest_packages + control_center_packages + schema_registry_packages) | unique}}"
+            backup_files:
+              - "{{ control_center.config_file }}"
+              - "{{ control_center.systemd_override }}"
+            restore_files:
+              - "{{ control_center.config_file }}"
+      when: reinstall_c3|bool
+    - debug:
+        msg: "Skip reinstalling C3"
+      when: not reinstall_c3|bool

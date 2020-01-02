@@ -1,0 +1,29 @@
+- name: Reinstall Schema Registry
+  hosts: schema_registry
+  vars_prompt:
+    - name: reinstall_sr
+      prompt: "Reinstall Schema Registry? [yes(default)/no]"
+      private: no
+      default: true
+  tasks:
+    - block:
+        - import_role:
+            name: confluent.variables_handlers
+        - import_role:
+            name: confluent.common
+        - name: Reinstall Schema Registry
+          include_tasks: tasks/reinstall_and_restart_components.yml
+          vars:
+            tmp_name: "schema_registry"
+            services:
+              - "{{ schema_registry_service_name }}"
+            packages: "{{ schema_registry_packages }}"
+            backup_files:
+              - "{{ schema_registry.config_file }}"
+              - "{{ schema_registry.systemd_override }}"
+            restore_files:
+              - "{{ schema_registry.config_file }}"
+      when: reinstall_sr|bool
+    - debug:
+        msg: "Skip reinstalling Schema Registry"
+      when: not reinstall_sr|bool

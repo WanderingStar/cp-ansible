@@ -1,0 +1,33 @@
+- name: Reinstall ZK
+  hosts: zookeeper
+  vars_prompt:
+    - name: reinstall_zk
+      prompt: "Reinstall ZK? [yes(default)/no]"
+      private: no
+      default: true
+  tasks:
+    - block:
+        - import_role:
+            name: confluent.variables_handlers
+        - import_role:
+            name: confluent.common
+        - name: Stop ZK
+          systemd:
+            name: "{{ zookeeper_service_name }}"
+            state: stopped
+        - name: Reinstall ZK
+          include_tasks: tasks/reinstall_components.yml
+          vars:
+            tmp_name: "zk"
+            packages: "{{ zookeeper_packages }}"
+            backup_files:
+              - "{{ zookeeper.config_file }}"
+              - "{{ zookeeper.systemd_override }}"
+            restore_files:
+              - "{{ zookeeper.config_file }}"
+        - name: Restart Zk Brokers
+          import_tasks: tasks/restart_zk.yml
+      when: reinstall_zk|bool
+    - debug:
+        msg: "Skip reinstalling ZK"
+      when: not reinstall_zk|bool

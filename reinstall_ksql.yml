@@ -1,0 +1,30 @@
+- name: Reinstall KSQL
+  hosts: ksql
+  vars_prompt:
+    - name: reinstall_ksql
+      prompt: "Reinstall KSQL? [yes(default)/no]"
+      private: no
+      default: true
+  tasks:
+    - block:
+        - import_role:
+            name: confluent.variables_handlers
+        - import_role:
+            name: confluent.common
+        - name: Reinstall KSQL
+          include_tasks: tasks/reinstall_and_restart_components.yml
+          vars:
+            tmp_name: "ksql"
+            services:
+              - "{{ ksql_service_name }}"
+            # control center for monitoring; schema registry for AVRO stuff
+            packages: "{{ (kafka_connect_packages + ksql_packages + schema_registry_packages + control_center_packages) | unique}}"
+            backup_files:
+              - "{{ ksql.config_file }}"
+              - "{{ ksql.systemd_override }}"
+            restore_files:
+              - "{{ ksql.config_file }}"
+      when: reinstall_ksql|bool
+    - debug:
+        msg: "Skip reinstalling KSQL"
+      when: not reinstall_ksql|bool
